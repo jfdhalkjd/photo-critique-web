@@ -9,20 +9,14 @@ interface CritiqueShowcaseProps {
 
 /**
  * 智能拆分点评文本,确保与图片数量对齐。
- * - 覆盖三种后端返回情况:
- *   (1) comments 数量已与 previewUrls 匹配 → 直接返回
- *   (2) 全部合并到 comments[0] → 合并后按 @昵称 拆分
- *   (3) 部分合并(如 2 张图 3 条评论 / 3 张图 1 条评论) → 合并再拆,数量超额则尾部聚合
  */
 function splitCritiques(comments: string[], imageCount: number): string[] {
   if (imageCount === 0) return comments;
   if (comments.length === imageCount) return comments;
 
-  // 合并所有内容再拆,可同时处理 (2) 和 (3)
   const merged = comments.join('\n\n').trim();
   if (!merged) return comments;
 
-  // 前瞻断言:只在 "@ + 非空白" 之前拆分,保留 @ 在段首,避免误切孤立 @
   const rawParts = merged
     .split(/(?=@[^\s@])/g)
     .map(p => p.trim())
@@ -30,11 +24,9 @@ function splitCritiques(comments: string[], imageCount: number): string[] {
 
   if (rawParts.length === 0) return comments;
 
-  // 丢弃前置非 @ 引导段,保证 index 与 previewUrls 对齐
   const atParts = rawParts.filter(p => p.startsWith('@'));
   const finalParts = atParts.length > 0 ? atParts : rawParts;
 
-  // 评论数 > 图片数:多出的并到最后一项,避免漏内容
   if (finalParts.length > imageCount) {
     const head = finalParts.slice(0, imageCount - 1);
     const tail = finalParts.slice(imageCount - 1).join('\n\n');
@@ -47,11 +39,14 @@ function splitCritiques(comments: string[], imageCount: number): string[] {
 export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
   previewUrls,
   comments,
+  conclusion, // ✅ 核心修复 1：在这里把 conclusion 接收进来
 }) => {
   const processedComments = splitCritiques(comments, previewUrls.length);
 
   return (
     <div className="space-y-12 px-4 pb-16 bg-gray-50/30">
+      
+      {/* 1. 照片与逐张点评区域 */}
       {previewUrls.map((img, index) => {
         const currentCritique = processedComments[index] || '';
 
@@ -61,7 +56,6 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
             className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden"
           >
             <div className="flex flex-col md:flex-row p-6 md:p-8 gap-8">
-              {/* 照片区 */}
               <div className="w-full md:w-2/5 aspect-[4/3] relative overflow-hidden rounded-2xl bg-black flex-shrink-0">
                 <img
                   src={img}
@@ -70,7 +64,6 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                 />
               </div>
 
-              {/* 点评区 */}
               <div className="w-full md:w-3/5 flex flex-col justify-start py-2">
                 {currentCritique ? (
                   <div className="text-gray-700">
@@ -78,7 +71,6 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                       const trimmed = line.trim();
                       if (!trimmed) return <div key={i} className="h-3" />;
 
-                      // 昵称行 → 色块标签
                       if (trimmed.startsWith('@')) {
                         return (
                           <div key={i} className="mb-6 mt-1">
@@ -99,7 +91,6 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                         );
                       }
 
-                      // 正文段落
                       return (
                         <p
                           key={i}
@@ -112,7 +103,7 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-400 text-lg py-12">
-                    ✨ 待点评...
+                    ✨ 趣小导正在努力写点评中...
                   </div>
                 )}
               </div>
@@ -120,6 +111,35 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
           </div>
         );
       })}
+
+      {/* 2. ✅ 核心修复 2：新增底部工作流总结 (今日小结/寄语) 区域 */}
+      {conclusion && (
+        <div className="mt-16 bg-gradient-to-b from-orange-50 to-amber-50/50 rounded-3xl shadow-sm border border-orange-200 p-8 md:p-10">
+          <div className="text-gray-800">
+            {conclusion.split('\n').map((line, i) => {
+              const trimmed = line.trim();
+              if (!trimmed) return <div key={i} className="h-4" />;
+              
+              // 自动识别标题或序号（如 🌟、🌻、1️⃣）进行加粗放大，让排版更有重点
+              const isHighlight = trimmed.includes('🌟') || trimmed.includes('🌻') || /^\d️⃣/.test(trimmed);
+              
+              return (
+                <div 
+                  key={i} 
+                  className={`mb-4 tracking-wide ${
+                    isHighlight 
+                      ? 'font-bold text-orange-900 text-xl md:text-2xl mt-8' 
+                      : 'text-lg md:text-xl leading-loose text-gray-700'
+                  }`}
+                >
+                  {trimmed}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      
     </div>
   );
 };
