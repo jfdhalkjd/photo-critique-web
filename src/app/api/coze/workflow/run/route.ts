@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseCritiqueFromCozeWorkflowJson } from "@/lib/parseWorkflowCritique";
+import { parseCritiqueFromCozeWorkflowJson, extractUserNicknameFromCozeWorkflow } from "@/lib/parseWorkflowCritique";
 
 export const runtime = "edge";
 
@@ -133,5 +133,6 @@ export async function POST(request: Request) {
 
   const markdown = extractMarkdownFromWorkflowPayload(json);
   const critique = parseCritiqueFromCozeWorkflowJson(json);
-  return NextResponse.json({ markdown, raw: json, critique });
+  const userNickname = extractUserNicknameFromCozeWorkflow(json);
+  return NextResponse.json({ markdown, raw: json, critique, userNickname });
 }

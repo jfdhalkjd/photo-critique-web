@@ -291,3 +291,60 @@ export function parseCritiqueFromCozeWorkflowJson(json: unknown): WorkflowCritiq
 
   return deepFindCritique(root, 0);
 }
+
+const NICKNAME_KEYS = [
+  "user_nickname",
+  "userNickname",
+  "nickname",
+  "nick_name",
+  "用户昵称",
+  "display_name",
+  "displayName",
+  "user_name",
+  "userName",
+];
+
+/**
+ * 从扣子工作流响应 JSON（含 data 内嵌字符串）中尽力提取用户昵称，供前端替换 {{user_nickname}}。
+ */
+export function extractUserNicknameFromCozeWorkflow(json: unknown): string | null {
+  const seen = new WeakSet<object>();
+
+  function walk(obj: unknown, depth: number): string | null {
+    if (depth > 12 || obj === undefined || obj === null) return null;
+    if (typeof obj === "string") {
+      const inner = tryParseJsonString(obj);
+      return inner !== null ? walk(inner, depth + 1) : null;
+    }
+    if (typeof obj !== "object") return null;
+    if (seen.has(obj as object)) return null;
+    seen.add(obj as object);
+
+    const rec = obj as Record<string, unknown>;
+    for (const k of NICKNAME_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(rec, k)) {
+        const v = rec[k];
+        if (typeof v === "string") {
+          const t = v.trim();
+          if (t) return t;
+        }
+      }
+    }
+
+    for (const v of Object.values(rec)) {
+      if (typeof v === "string") {
+        const inner = tryParseJsonString(v);
+        if (inner !== null) {
+          const hit = walk(inner, depth + 1);
+          if (hit) return hit;
+        }
+      } else if (v && typeof v === "object") {
+        const hit = walk(v, depth + 1);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  }
+
+  return walk(json, 0);
+}

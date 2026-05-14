@@ -1,24 +1,25 @@
 "use client";
 
-import { SeniorMarkdown } from "@/components/senior-markdown";
+import { CritiqueRichText } from "@/components/CritiqueRichText";
 
 export type CritiqueShowcaseProps = {
   /** 与上传顺序一致：第 i 张对应 comments[i] */
   previewUrls: string[];
-  imageLabels: string[];
   comments: string[];
   conclusion: string | null;
+  /** 来自 API / raw 解析；用于替换 {{user_nickname}} */
+  userNickname?: string | null;
 };
 
 export function CritiqueShowcase({
   previewUrls,
-  imageLabels,
   comments,
   conclusion,
+  userNickname,
 }: CritiqueShowcaseProps) {
   const rowCount = Math.max(previewUrls.length, comments.length);
   const raw0 = comments[0]?.trim() ?? "";
-  /** 整段未拆成多行时：一次展示原文（含表格或长文），缩略图顺序与上传一致 */
+  /** 整段未拆成多行时：一次展示原文，缩略图顺序与上传一致 */
   const mergedMarkdownFallback =
     comments.length === 1 &&
     previewUrls.length > 1 &&
@@ -49,21 +50,21 @@ export function CritiqueShowcase({
           <div className="flex flex-col gap-6 rounded-2xl border-2 border-sky-100 bg-white/95 p-4 shadow-md ring-1 ring-orange-100/60 sm:flex-row sm:items-start sm:p-6">
             <div className="flex flex-wrap justify-center gap-3 sm:w-56 sm:flex-col sm:items-stretch">
               {previewUrls.map((url, i) => (
-                <div key={`thumb-${url}-${i}`} className="w-[7.5rem] shrink-0 overflow-hidden rounded-xl border-2 border-sky-200 bg-slate-50 shadow-inner">
+                <div
+                  key={`thumb-${url}-${i}`}
+                  className="aspect-square w-[7.5rem] shrink-0 overflow-hidden rounded-xl border-2 border-sky-200 bg-neutral-900 shadow-inner"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
                     alt={`您上传的第 ${i + 1} 张照片`}
-                    className="aspect-square w-full object-cover"
+                    className="h-full w-full object-cover"
                   />
-                  <div className="bg-gradient-to-r from-sky-100 to-orange-50 py-1.5 text-center text-[1rem] font-semibold text-sky-900">
-                    第 {i + 1} 张
-                  </div>
                 </div>
               ))}
             </div>
             <div className="min-w-0 flex-1 rounded-xl bg-[#fffdf8] p-4 ring-1 ring-sky-100/80">
-              <SeniorMarkdown variant="compact">{raw0}</SeniorMarkdown>
+              <CritiqueRichText markdown={raw0} userNickname={userNickname} variant="compact" />
             </div>
           </div>
         </div>
@@ -74,7 +75,6 @@ export function CritiqueShowcase({
           {Array.from({ length: rowCount }, (_, i) => {
             const url = previewUrls[i];
             const comment = comments[i];
-            const label = imageLabels[i] ?? `第 ${i + 1} 张`;
             const hasText = Boolean(comment?.trim());
 
             return (
@@ -82,20 +82,15 @@ export function CritiqueShowcase({
                 key={`row-${i}`}
                 className="overflow-hidden rounded-2xl border-2 border-sky-100 bg-white/95 shadow-md ring-1 ring-orange-100/60"
               >
-                <div className="border-b border-sky-100 bg-gradient-to-r from-sky-50/90 to-orange-50/50 px-4 py-2 sm:px-5">
-                  <span className="text-[1.125rem] font-semibold text-sky-900">
-                    【第 {i + 1} 张】{label}
-                  </span>
-                </div>
                 <div className="flex flex-col gap-5 p-4 sm:flex-row sm:items-start sm:gap-6 sm:p-6">
                   <div className="mx-auto w-full max-w-[280px] shrink-0 sm:mx-0 sm:w-52">
                     {url ? (
-                      <div className="overflow-hidden rounded-xl border-2 border-sky-200 bg-slate-50 shadow-inner">
+                      <div className="aspect-square w-full overflow-hidden rounded-xl border-2 border-sky-200 bg-neutral-900 shadow-inner">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={url}
                           alt={`您上传的第 ${i + 1} 张照片`}
-                          className="aspect-square w-full object-cover"
+                          className="h-full w-full object-cover"
                         />
                       </div>
                     ) : (
@@ -106,7 +101,11 @@ export function CritiqueShowcase({
                   </div>
                   <div className="min-w-0 flex-1 rounded-xl bg-[#fffdf8] p-4 ring-1 ring-sky-100/80">
                     {hasText ? (
-                      <SeniorMarkdown variant="compact">{comment!.trim()}</SeniorMarkdown>
+                      <CritiqueRichText
+                        markdown={comment!.trim()}
+                        userNickname={userNickname}
+                        variant="compact"
+                      />
                     ) : (
                       <p className="text-[1.125rem] leading-relaxed text-slate-600">
                         （本条暂无文字点评，请稍后在扣子工作流中检查输出字段是否齐全。）
@@ -131,7 +130,7 @@ export function CritiqueShowcase({
             </span>
             <h3 className="text-[1.45rem] font-bold text-sky-900">导师寄语</h3>
           </div>
-          <SeniorMarkdown variant="default">{conclusion}</SeniorMarkdown>
+          <CritiqueRichText markdown={conclusion} userNickname={userNickname} variant="default" />
         </aside>
       )}
     </section>

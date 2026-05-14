@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { CritiqueResult } from "@/components/CritiqueResult";
 import { CritiqueShowcase } from "@/components/CritiqueShowcase";
 import {
+  extractUserNicknameFromCozeWorkflow,
   parseCritiqueFromCozeWorkflowJson,
   type WorkflowCritique,
 } from "@/lib/parseWorkflowCritique";
@@ -15,6 +16,7 @@ type RunJson = {
   markdown?: string;
   raw?: unknown;
   critique?: WorkflowCritique | null;
+  userNickname?: string | null;
 };
 
 export function CritiquePage() {
@@ -27,6 +29,7 @@ export function CritiquePage() {
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [critique, setCritique] = useState<WorkflowCritique | null>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [userNickname, setUserNickname] = useState<string | null>(null);
 
   const replacePreviewUrls = useCallback((next: string[]) => {
     previewUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
@@ -58,6 +61,7 @@ export function CritiquePage() {
       }
       setMarkdown(null);
       setCritique(null);
+      setUserNickname(null);
       replacePreviewUrls([]);
     },
     [replacePreviewUrls],
@@ -82,6 +86,7 @@ export function CritiquePage() {
     setError(null);
     setMarkdown(null);
     setCritique(null);
+    setUserNickname(null);
     replacePreviewUrls([]);
 
     try {
@@ -116,6 +121,12 @@ export function CritiquePage() {
       if (!run.ok) {
         throw new Error(runJson.error || "工作流执行失败");
       }
+
+      const resolvedNick =
+        (typeof runJson.userNickname === "string" && runJson.userNickname.trim()
+          ? runJson.userNickname.trim()
+          : null) ?? extractUserNicknameFromCozeWorkflow(runJson.raw);
+      setUserNickname(resolvedNick);
 
       const mergedCritique =
         runJson.critique != null
@@ -237,12 +248,9 @@ export function CritiquePage() {
       {showStructured && critique && (
         <CritiqueShowcase
           previewUrls={previewUrls}
-          imageLabels={files.map((f) => {
-            const base = f.name.replace(/\.[^.]+$/, "");
-            return base || f.name;
-          })}
           comments={critique.comments}
           conclusion={critique.conclusion}
+          userNickname={userNickname}
         />
       )}
 
@@ -251,7 +259,7 @@ export function CritiquePage() {
           <h2 className="mb-4 text-center text-[1.5rem] font-bold leading-snug text-sky-900">
             点评正文
           </h2>
-          <CritiqueResult markdown={markdown} />
+          <CritiqueResult markdown={markdown} userNickname={userNickname} />
         </div>
       )}
 
