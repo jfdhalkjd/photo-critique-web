@@ -79,10 +79,10 @@ const FONT_SANS =
 const Tape: React.FC<{
   color: string;
   rotate: number;
-  top: number;
-  left?: number;
-  right?: number;
-  width?: number;
+  top: number | string;
+  left?: number | string;
+  right?: number | string;
+  width?: number | string;
 }> = ({ color, rotate, top, left, right, width = 80 }) => (
   <div
     aria-hidden
