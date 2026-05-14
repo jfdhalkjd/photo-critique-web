@@ -1,6 +1,5 @@
 import React from 'react';
 
-// 这里的名字必须和报错信息里的一模一样
 interface CritiqueShowcaseProps {
   previewUrls: string[];
   comments: string[];
@@ -11,45 +10,72 @@ interface CritiqueShowcaseProps {
 export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({ 
   previewUrls, 
   comments, 
-  userNickname 
 }) => {
-  return (
-    <div className="space-y-6 px-4 pb-10">
-      {previewUrls.map((img, index) => (
-        <div key={index} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="flex flex-col md:flex-row p-4 gap-6">
-            {/* 照片区：自动裁切 */}
-            <div className="w-full md:w-1/3 aspect-square relative overflow-hidden rounded-xl border border-gray-50">
-              <img
-                src={img}
-                alt={`作品 ${index + 1}`}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            </div>
+  // 【核心修复】解决点评内容“挤在一起”的问题
+  // 如果后台传回的点评是一个大长串，我们需要按“@”符号来自动切分
+  let processedComments = [...comments];
+  
+  if (comments.length === 1 && previewUrls.length > 1) {
+    const fullText = comments[0];
+    // 通过正则表达式寻找以 @ 开头的段落进行切分
+    const splitParts = fullText.split(/(?=@)/g).filter(p => p.trim().length > 0);
+    if (splitParts.length > 0) {
+      processedComments = splitParts;
+    }
+  }
 
-            {/* 点评区 */}
-            <div className="w-full md:w-2/3 flex flex-col justify-center py-2">
-              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                {comments[index] ? (
-                  comments[index].split('\n').map((line, i) => {
-                    // 自动美化昵称行
-                    if (line.includes('@')) {
+  return (
+    <div className="space-y-8 px-4 pb-12 bg-gray-50/30">
+      {previewUrls.map((img, index) => {
+        const currentCritique = processedComments[index] || "";
+        
+        return (
+          <div key={index} className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden transition-all hover:shadow-lg">
+            <div className="flex flex-col md:flex-row p-5 gap-8">
+              {/* 照片区：强制裁切黑边，比例更美观 */}
+              <div className="w-full md:w-2/5 aspect-[4/3] relative overflow-hidden rounded-2xl shadow-inner bg-black">
+                <img
+                  src={img}
+                  alt={`作品 ${index + 1}`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
+
+              {/* 点评区：强化颜色对比与排版 */}
+              <div className="w-full md:w-3/5 flex flex-col justify-start py-2">
+                <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                  {currentCritique ? (
+                    currentCritique.split('\n').map((line, i) => {
+                      const trimmedLine = line.trim();
+                      if (!trimmedLine) return <div key={i} className="h-2" />;
+
+                      // 【视觉升级】识别昵称行：字号加大、颜色变深绿、底部加细线
+                      if (trimmedLine.startsWith('@')) {
+                        return (
+                          <div key={i} className="text-2xl font-black text-green-800 mb-6 pb-2 border-b-2 border-green-100 inline-block">
+                            {trimmedLine}
+                          </div>
+                        );
+                      }
+                      
+                      // 普通正文：保持稳重的深灰色，与绿色的标题形成鲜明反差
                       return (
-                        <div key={i} className="text-xl font-bold text-green-700 mb-4">
-                          {line}
-                        </div>
+                        <p key={i} className="mb-4 text-gray-700 text-lg font-medium tracking-tight">
+                          {trimmedLine}
+                        </p>
                       );
-                    }
-                    return <p key={i} className="mb-3">{line}</p>;
-                  })
-                ) : (
-                  <span className="text-gray-400 italic text-sm">(暂无文字点评)</span>
-                )}
+                    })
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400 italic">
+                      ✨ 趣小导正在努力写点评中...
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
