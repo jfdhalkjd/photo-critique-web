@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --page-min-font: 18px;
+}
+
+html {
+  font-size: var(--page-min-font);
+}
+
+body {
+  @apply min-h-screen bg-cream text-slate-800 antialiased;
+}
+
+/* 宽大表格：Markdown 表格横向滚动、留白 */
+.critique-md table {
+  @apply w-full min-w-[48rem] border-collapse text-left;
+}
+
+.critique-md th,
+.critique-md td {
+  @apply border border-sky-200 px-4 py-3 align-top text-base leading-relaxed;
+}
+
+.critique-md th {
+  @apply bg-sky-100 font-semibold text-sky-900;
+}
+
+.critique-md tr:nth-child(even) td {
+  @apply bg-orange-50/40;
+}
+
+.critique-md .table-wrap {
+  @apply -mx-2 overflow-x-auto rounded-xl border border-sky-100 bg-white/90 p-2 shadow-inner sm:mx-0;
+}
+
+@keyframes bounce-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-bounce-soft {
+  animation: bounce-soft 1.2s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2.5s linear infinite;
+}
+
+@keyframes gentle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.88;
+  }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 2.4s ease-in-out infinite;
+}
