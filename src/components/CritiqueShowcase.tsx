@@ -7,33 +7,62 @@ interface CritiqueShowcaseProps {
   userNickname?: string | null;
 }
 
-export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({ 
-  previewUrls, 
-  comments, 
-}) => {
-  // 【核心修复】解决点评内容“挤在一起”的问题
-  // 如果后台传回的点评是一个大长串，我们需要按“@”符号来自动切分
-  let processedComments = [...comments];
-  
-  if (comments.length === 1 && previewUrls.length > 1) {
-    const fullText = comments[0];
-    // 通过正则表达式寻找以 @ 开头的段落进行切分
-    const splitParts = fullText.split(/(?=@)/g).filter(p => p.trim().length > 0);
-    if (splitParts.length > 0) {
-      processedComments = splitParts;
-    }
+/**
+ * 智能拆分点评文本,确保与图片数量对齐。
+ * - 覆盖三种后端返回情况:
+ *   (1) comments 数量已与 previewUrls 匹配 → 直接返回
+ *   (2) 全部合并到 comments[0] → 合并后按 @昵称 拆分
+ *   (3) 部分合并(如 2 张图 3 条评论 / 3 张图 1 条评论) → 合并再拆,数量超额则尾部聚合
+ */
+function splitCritiques(comments: string[], imageCount: number): string[] {
+  if (imageCount === 0) return comments;
+  if (comments.length === imageCount) return comments;
+
+  // 合并所有内容再拆,可同时处理 (2) 和 (3)
+  const merged = comments.join('\n\n').trim();
+  if (!merged) return comments;
+
+  // 前瞻断言:只在 "@ + 非空白" 之前拆分,保留 @ 在段首,避免误切孤立 @
+  const rawParts = merged
+    .split(/(?=@[^\s@])/g)
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+
+  if (rawParts.length === 0) return comments;
+
+  // 丢弃前置非 @ 引导段,保证 index 与 previewUrls 对齐
+  const atParts = rawParts.filter(p => p.startsWith('@'));
+  const finalParts = atParts.length > 0 ? atParts : rawParts;
+
+  // 评论数 > 图片数:多出的并到最后一项,避免漏内容
+  if (finalParts.length > imageCount) {
+    const head = finalParts.slice(0, imageCount - 1);
+    const tail = finalParts.slice(imageCount - 1).join('\n\n');
+    return [...head, tail];
   }
 
+  return finalParts;
+}
+
+export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
+  previewUrls,
+  comments,
+}) => {
+  const processedComments = splitCritiques(comments, previewUrls.length);
+
   return (
-    <div className="space-y-8 px-4 pb-12 bg-gray-50/30">
+    <div className="space-y-12 px-4 pb-16 bg-gray-50/30">
       {previewUrls.map((img, index) => {
-        const currentCritique = processedComments[index] || "";
-        
+        const currentCritique = processedComments[index] || '';
+
         return (
-          <div key={index} className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden transition-all hover:shadow-lg">
-            <div className="flex flex-col md:flex-row p-5 gap-8">
-              {/* 照片区：强制裁切黑边，比例更美观 */}
-              <div className="w-full md:w-2/5 aspect-[4/3] relative overflow-hidden rounded-2xl shadow-inner bg-black">
+          <div
+            key={index}
+            className="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden"
+          >
+            <div className="flex flex-col md:flex-row p-6 md:p-8 gap-8">
+              {/* 照片区 */}
+              <div className="w-full md:w-2/5 aspect-[4/3] relative overflow-hidden rounded-2xl bg-black flex-shrink-0">
                 <img
                   src={img}
                   alt={`作品 ${index + 1}`}
@@ -41,36 +70,51 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                 />
               </div>
 
-              {/* 点评区：强化颜色对比与排版 */}
+              {/* 点评区 */}
               <div className="w-full md:w-3/5 flex flex-col justify-start py-2">
-                <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                  {currentCritique ? (
-                    currentCritique.split('\n').map((line, i) => {
-                      const trimmedLine = line.trim();
-                      if (!trimmedLine) return <div key={i} className="h-2" />;
+                {currentCritique ? (
+                  <div className="text-gray-700">
+                    {currentCritique.split('\n').map((line, i) => {
+                      const trimmed = line.trim();
+                      if (!trimmed) return <div key={i} className="h-3" />;
 
-                      // 【视觉升级】识别昵称行：字号加大、颜色变深绿、底部加细线
-                      if (trimmedLine.startsWith('@')) {
+                      // 昵称行 → 色块标签
+                      if (trimmed.startsWith('@')) {
                         return (
-                          <div key={i} className="text-2xl font-black text-green-800 mb-6 pb-2 border-b-2 border-green-100 inline-block">
-                            {trimmedLine}
+                          <div key={i} className="mb-6 mt-1">
+                            <span
+                              className="
+                                inline-block
+                                bg-green-100 text-green-800
+                                font-bold text-xl md:text-2xl
+                                px-5 py-2.5
+                                rounded-xl
+                                shadow-sm
+                                tracking-wide
+                              "
+                            >
+                              {trimmed}
+                            </span>
                           </div>
                         );
                       }
-                      
-                      // 普通正文：保持稳重的深灰色，与绿色的标题形成鲜明反差
+
+                      // 正文段落
                       return (
-                        <p key={i} className="mb-4 text-gray-700 text-lg font-medium tracking-tight">
-                          {trimmedLine}
+                        <p
+                          key={i}
+                          className="mb-5 text-gray-700 text-base md:text-lg leading-loose tracking-wide"
+                        >
+                          {trimmed}
                         </p>
                       );
-                    })
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400 italic">
-                      ✨ 趣小导正在努力写点评中...
-                    </div>
-                  )}
-                </div>
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-400 text-lg py-12">
+                    ✨ 待点评...
+                  </div>
+                )}
               </div>
             </div>
           </div>
