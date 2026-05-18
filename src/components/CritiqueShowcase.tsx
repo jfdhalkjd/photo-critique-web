@@ -48,20 +48,35 @@ function renderInline(text: string): React.ReactNode[] {
   });
 }
 
-/* ============ 设计令牌 ============ */
+/** 把一段评论拆成 { nickname, paragraphs[] } */
+function parseCritique(text: string): { nickname: string | null; paragraphs: string[] } {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  let nickname: string | null = null;
+  const paragraphs: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('@') && !nickname) {
+      // 第一行 @ 开头当作昵称
+      nickname = line;
+    } else {
+      paragraphs.push(line);
+    }
+  }
+  return { nickname, paragraphs };
+}
+
+/* ============ 设计令牌(整体紧凑约 15%) ============ */
 const C = {
-  bgPage: '#F7F1E6',           // 暖米黄底
-  bgPaper: '#FFFCF5',          // 纸张色
-  bgFrame: '#FCEFD3',          // 相框暖色
-  bgFrameDeep: '#F5DDA8',      // 相框深一档
-  inkTitle: '#3D2C1F',         // 深咖标题
-  inkBody: '#5A4634',          // 暖咖正文
-  inkMuted: '#A89580',         // 浅咖辅助
-  accent: '#E89B4E',           // 暖橙
-  accentDeep: '#C97A2B',       // 深橙
-  accentSoft: '#FFD89B',       // 浅金
-  tapeYellow: 'rgba(252, 211, 77, 0.55)',  // 半透明胶带·黄
-  tapePink: 'rgba(253, 186, 184, 0.55)',   // 半透明胶带·粉
+  bgPage: '#F7F1E6',
+  bgPaper: '#FFFCF5',
+  inkTitle: '#3D2C1F',
+  inkBody: '#5A4634',
+  inkMuted: '#A89580',
+  accent: '#E89B4E',
+  accentDeep: '#C97A2B',
+  accentSoft: '#FFD89B',
+  tapeYellow: 'rgba(252, 211, 77, 0.55)',
+  tapePink: 'rgba(253, 186, 184, 0.55)',
   conclBg1: '#FFF3DC',
   conclBg2: '#FFE6BC',
   shadow: '0 4px 20px -8px rgba(184, 134, 60, 0.25)',
@@ -75,7 +90,6 @@ const FONT_SANS =
 
 /* ============ 装饰子组件 ============ */
 
-// 手账胶带
 const Tape: React.FC<{
   color: string;
   rotate: number;
@@ -83,7 +97,7 @@ const Tape: React.FC<{
   left?: number | string;
   right?: number | string;
   width?: number | string;
-}> = ({ color, rotate, top, left, right, width = 80 }) => (
+}> = ({ color, rotate, top, left, right, width = 70 }) => (
   <div
     aria-hidden
     style={{
@@ -92,7 +106,7 @@ const Tape: React.FC<{
       left,
       right,
       width,
-      height: 24,
+      height: 20,
       background: color,
       transform: `rotate(${rotate}deg)`,
       boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
@@ -100,36 +114,6 @@ const Tape: React.FC<{
       pointerEvents: 'none',
     }}
   />
-);
-
-// 小印章
-const Stamp: React.FC<{ index: number }> = ({ index }) => (
-  <div
-    style={{
-      position: 'absolute',
-      top: 18,
-      right: 18,
-      width: 56,
-      height: 56,
-      borderRadius: '50%',
-      border: `2px solid ${C.accentDeep}`,
-      background: 'rgba(255,255,255,0.92)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: FONT_SERIF,
-      color: C.accentDeep,
-      transform: 'rotate(-8deg)',
-      boxShadow: '0 2px 6px rgba(184, 134, 60, 0.2)',
-      zIndex: 3,
-    }}
-  >
-    <div style={{ fontSize: 9, letterSpacing: '0.15em', lineHeight: 1 }}>NO.</div>
-    <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.1, marginTop: 2 }}>
-      {String(index).padStart(2, '0')}
-    </div>
-  </div>
 );
 
 /* ============ 导出工具 ============ */
@@ -178,7 +162,7 @@ async function exportAsPDF(el: HTMLElement, filename: string) {
   const imgData = canvas.toDataURL('image/jpeg', 0.92);
   // @ts-ignore
   const { jsPDF } = window.jspdf;
-  const pdfW = 210; // A4 mm
+  const pdfW = 210;
   const pdfH = (canvas.height * pdfW) / canvas.width;
   const pdf = new jsPDF({
     orientation: pdfH > pdfW ? 'p' : 'l',
@@ -231,20 +215,20 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
       style={{
         background: C.bgPage,
         minHeight: '100vh',
-        padding: '32px 16px 80px',
+        padding: '24px 14px 60px',
         fontFamily: FONT_SANS,
         backgroundImage: `radial-gradient(circle at 20% 10%, rgba(255, 216, 155, 0.25) 0%, transparent 40%),
                           radial-gradient(circle at 80% 80%, rgba(253, 186, 184, 0.18) 0%, transparent 45%)`,
       }}
     >
       <div style={{ maxWidth: 780, margin: '0 auto' }}>
-        {/* ========== 导出按钮(不进截图) ========== */}
+        {/* ========== 导出按钮 ========== */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: 10,
-            marginBottom: 20,
+            gap: 8,
+            marginBottom: 14,
             flexWrap: 'wrap',
           }}
         >
@@ -252,12 +236,12 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
             onClick={() => handleExport('png')}
             disabled={!!exporting}
             style={{
-              padding: '10px 18px',
+              padding: '8px 16px',
               borderRadius: 999,
               border: `1.5px solid ${C.accent}`,
               background: exporting === 'png' ? C.accentSoft : '#fff',
               color: C.accentDeep,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 600,
               cursor: exporting ? 'wait' : 'pointer',
               boxShadow: C.shadow,
@@ -271,12 +255,12 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
             onClick={() => handleExport('pdf')}
             disabled={!!exporting}
             style={{
-              padding: '10px 18px',
+              padding: '8px 16px',
               borderRadius: 999,
               border: `1.5px solid ${C.accent}`,
               background: exporting === 'pdf' ? C.accentSoft : C.accent,
               color: exporting === 'pdf' ? C.accentDeep : '#fff',
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 600,
               cursor: exporting ? 'wait' : 'pointer',
               boxShadow: C.shadow,
@@ -288,76 +272,67 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
           </button>
         </div>
 
-        {/* ========== 可被截图的内容区 ========== */}
-        <div ref={captureRef} style={{ background: C.bgPage, padding: '8px 4px' }}>
+        {/* ========== 可截图区 ========== */}
+        <div ref={captureRef} style={{ background: C.bgPage, padding: '6px 4px' }}>
 
-          {/* ----- 页头 ----- */}
-          <header style={{ textAlign: 'center', marginBottom: 40, position: 'relative' }}>
-            <div
+          {/* ----- 页头(紧凑版) ----- */}
+          <header style={{ textAlign: 'center', marginBottom: 28 }}>
+            <p
               style={{
-                display: 'inline-block',
-                position: 'relative',
-                padding: '8px 28px',
+                fontSize: 10,
+                letterSpacing: '0.5em',
+                color: C.accentDeep,
+                textTransform: 'uppercase',
+                marginBottom: 8,
+                fontWeight: 600,
               }}
             >
-              <p
-                style={{
-                  fontSize: 11,
-                  letterSpacing: '0.5em',
-                  color: C.accentDeep,
-                  textTransform: 'uppercase',
-                  marginBottom: 10,
-                  fontWeight: 600,
-                  fontFamily: FONT_SANS,
-                }}
-              >
-                Photography · Diary
-              </p>
-              <h1
-                style={{
-                  fontFamily: FONT_SERIF,
-                  fontSize: 34,
-                  fontWeight: 700,
-                  color: C.inkTitle,
-                  letterSpacing: '0.08em',
-                  margin: 0,
-                  lineHeight: 1.3,
-                }}
-              >
-                今 日 摄 影 小 结
-              </h1>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: C.inkMuted,
-                  marginTop: 10,
-                  letterSpacing: '0.2em',
-                  fontFamily: FONT_SERIF,
-                }}
-              >
-                {dateStamp}
-              </p>
-            </div>
-            {/* 头部装饰线 */}
+              Photography · Diary
+            </p>
+            <h1
+              style={{
+                fontFamily: FONT_SERIF,
+                fontSize: 28,
+                fontWeight: 700,
+                color: C.inkTitle,
+                letterSpacing: '0.08em',
+                margin: 0,
+                lineHeight: 1.3,
+              }}
+            >
+              今 日 摄 影 小 结
+            </h1>
+            <p
+              style={{
+                fontSize: 12,
+                color: C.inkMuted,
+                marginTop: 6,
+                letterSpacing: '0.2em',
+                fontFamily: FONT_SERIF,
+              }}
+            >
+              {dateStamp}
+            </p>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 10,
-                marginTop: 18,
+                gap: 8,
+                marginTop: 12,
               }}
             >
-              <span style={{ width: 60, height: 1, background: C.accentSoft }} />
-              <span style={{ color: C.accent, fontSize: 14 }}>✿</span>
-              <span style={{ width: 60, height: 1, background: C.accentSoft }} />
+              <span style={{ width: 50, height: 1, background: C.accentSoft }} />
+              <span style={{ color: C.accent, fontSize: 12 }}>✿</span>
+              <span style={{ width: 50, height: 1, background: C.accentSoft }} />
             </div>
           </header>
 
           {/* ----- 作品卡片 ----- */}
           <div>
             {previewUrls.map((img, index) => {
-              const currentCritique = processedComments[index] || '';
+              const raw = processedComments[index] || '';
+              const { nickname, paragraphs } = parseCritique(raw);
               const isOdd = index % 2 === 0;
 
               return (
@@ -365,60 +340,114 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                   key={index}
                   style={{
                     background: C.bgPaper,
-                    borderRadius: 18,
+                    borderRadius: 14,
                     boxShadow: C.shadowDeep,
                     border: `1px solid rgba(220, 195, 145, 0.35)`,
                     overflow: 'visible',
-                    marginBottom: 40,
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 6fr)',
+                    marginBottom: 28,
+                    padding: '22px 22px 20px',
                     position: 'relative',
                   }}
                   className="critique-card"
                 >
-                  {/* 顶部胶带装饰 */}
+                  {/* 顶部胶带 */}
                   <Tape
                     color={isOdd ? C.tapeYellow : C.tapePink}
                     rotate={isOdd ? -3 : 4}
-                    top={-10}
-                    left={isOdd ? 30 : undefined}
-                    right={isOdd ? undefined : 30}
-                    width={90}
+                    top={-9}
+                    left={isOdd ? 24 : undefined}
+                    right={isOdd ? undefined : 24}
+                    width={70}
                   />
 
-                  {/* ----- 图片相框区 ----- */}
-                  <div
-                    style={{
-                      padding: '24px 20px 24px 24px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      position: 'relative',
-                    }}
-                    className="critique-image-pad"
-                  >
+                  {/* 昵称行(独立成行,便签风) */}
+                  {nickname && (
                     <div
                       style={{
-                        width: '100%',
-                        background: `linear-gradient(135deg, ${C.bgFrame} 0%, ${C.bgFrameDeep} 100%)`,
-                        padding: 14,
-                        borderRadius: 10,
-                        boxShadow:
-                          'inset 0 1px 0 rgba(255,255,255,0.6), 0 4px 12px -4px rgba(184, 134, 60, 0.2)',
-                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        marginBottom: 16,
+                        flexWrap: 'wrap',
                       }}
                     >
-                      <Stamp index={index + 1} />
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '6px 14px 6px 12px',
+                          background: 'linear-gradient(135deg, #FFF6E0 0%, #FFEAC2 100%)',
+                          borderLeft: `4px solid ${C.accent}`,
+                          borderRadius: '4px 8px 8px 4px',
+                          boxShadow: '0 2px 6px -2px rgba(184, 134, 60, 0.2)',
+                        }}
+                      >
+                        <span style={{ fontSize: 14, color: C.accentDeep }}>✎</span>
+                        <span
+                          style={{
+                            fontFamily: FONT_SERIF,
+                            fontSize: 17,
+                            fontWeight: 700,
+                            color: C.inkTitle,
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {nickname}
+                        </span>
+                      </div>
+
+                      {/* 右侧序号贴纸 */}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'baseline',
+                          gap: 4,
+                          padding: '3px 10px',
+                          background: C.accentSoft,
+                          borderRadius: 4,
+                          fontFamily: FONT_SERIF,
+                          color: C.accentDeep,
+                        }}
+                      >
+                        <span style={{ fontSize: 9, letterSpacing: '0.2em', fontWeight: 600 }}>
+                          NO.
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.05em' }}>
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 主体:图 + 文 */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 6fr)',
+                      gap: 22,
+                      alignItems: 'start',
+                    }}
+                    className="critique-body"
+                  >
+                    {/* 图片:4:3 长方形容器 + object-cover,自动裁黑边 */}
+                    <div
+                      style={{
+                        background: '#fff',
+                        padding: 8,
+                        borderRadius: 6,
+                        boxShadow:
+                          '0 4px 12px -4px rgba(184, 134, 60, 0.25), inset 0 0 0 1px rgba(184, 134, 60, 0.1)',
+                      }}
+                    >
                       <div
                         style={{
                           width: '100%',
                           aspectRatio: '4 / 3',
-                          background: '#1a1a1a',
-                          borderRadius: 4,
                           overflow: 'hidden',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.4)',
+                          borderRadius: 3,
+                          background: '#f5f5f4',
                         }}
                       >
                         <img
@@ -426,219 +455,162 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
                           alt={`作品 ${index + 1}`}
                           crossOrigin="anonymous"
                           style={{
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            width: 'auto',
-                            height: 'auto',
-                            objectFit: 'contain',
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
                             display: 'block',
                           }}
                         />
                       </div>
-                      {/* 相框底标签 */}
                       <div
                         style={{
-                          marginTop: 10,
+                          marginTop: 6,
                           textAlign: 'center',
                           fontFamily: FONT_SERIF,
-                          fontSize: 11,
-                          color: C.accentDeep,
-                          letterSpacing: '0.3em',
+                          fontSize: 9,
+                          color: C.inkMuted,
+                          letterSpacing: '0.35em',
                         }}
                       >
                         · MOMENT {String(index + 1).padStart(2, '0')} ·
                       </div>
                     </div>
-                  </div>
 
-                  {/* ----- 文字区 ----- */}
-                  <div
-                    style={{
-                      padding: '34px 32px 30px 12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                    }}
-                    className="critique-text"
-                  >
-                    {currentCritique ? (
-                      <div>
-                        {currentCritique.split('\n').map((line, i) => {
-                          const trimmed = line.trim();
-                          if (!trimmed) return <div key={i} style={{ height: 8 }} />;
-
-                          // 昵称 → 便签风格
-                          if (trimmed.startsWith('@')) {
-                            return (
-                              <div
-                                key={i}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 10,
-                                  marginBottom: 22,
-                                  paddingBottom: 14,
-                                  borderBottom: `2px dashed ${C.accentSoft}`,
-                                  width: '100%',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontSize: 18,
-                                    transform: 'translateY(-1px)',
-                                  }}
-                                >
-                                  ✎
-                                </span>
-                                <span
-                                  style={{
-                                    fontFamily: FONT_SERIF,
-                                    fontSize: 20,
-                                    fontWeight: 700,
-                                    color: C.inkTitle,
-                                    letterSpacing: '0.05em',
-                                  }}
-                                >
-                                  {trimmed}
-                                </span>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <p
-                              key={i}
-                              style={{
-                                margin: '0 0 14px',
-                                color: C.inkBody,
-                                fontSize: 15,
-                                lineHeight: 2,
-                                letterSpacing: '0.03em',
-                                fontFamily: FONT_SERIF,
-                              }}
-                            >
-                              {renderInline(trimmed)}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minHeight: 200,
-                          color: C.inkMuted,
-                        }}
-                      >
-                        ✨ 待点评...
-                      </div>
-                    )}
+                    {/* 文字区:正文段落 */}
+                    <div style={{ paddingTop: 2 }} className="critique-text">
+                      {paragraphs.length > 0 ? (
+                        paragraphs.map((para, i) => (
+                          <p
+                            key={i}
+                            style={{
+                              margin: '0 0 12px',
+                              color: C.inkBody,
+                              fontSize: 14.5,
+                              lineHeight: 1.9,
+                              letterSpacing: '0.03em',
+                              fontFamily: FONT_SERIF,
+                              textIndent: 0,
+                            }}
+                          >
+                            {renderInline(para)}
+                          </p>
+                        ))
+                      ) : (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: 140,
+                            color: C.inkMuted,
+                          }}
+                        >
+                          ✨ 待点评...
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </article>
               );
             })}
           </div>
 
-          {/* ----- 晚安寄语 ----- */}
+          {/* ----- 每日寄语 ----- */}
           {hasConclusion && (
             <section
               style={{
                 position: 'relative',
                 overflow: 'hidden',
-                borderRadius: 22,
+                borderRadius: 18,
                 border: `1px solid rgba(220, 195, 145, 0.5)`,
                 background: `linear-gradient(135deg, ${C.conclBg1} 0%, ${C.conclBg2} 100%)`,
-                marginTop: 36,
+                marginTop: 26,
                 boxShadow: C.shadowDeep,
               }}
             >
-              {/* 装饰胶带 */}
-              <Tape color={C.tapeYellow} rotate={-4} top={-10} left={'50%'} width={100} />
+              <Tape color={C.tapeYellow} rotate={-4} top={-9} left={'50%'} width={80} />
 
-              {/* 大月亮水印 */}
               <div
                 aria-hidden
                 style={{
                   position: 'absolute',
-                  top: -30,
-                  right: -30,
-                  fontSize: 180,
+                  top: -24,
+                  right: -24,
+                  fontSize: 140,
                   opacity: 0.08,
                   pointerEvents: 'none',
                   lineHeight: 1,
                 }}
               >
-                🌙
+                ✿
               </div>
 
-              <div style={{ position: 'relative', padding: '40px 36px 36px' }}>
+              <div style={{ position: 'relative', padding: '28px 26px 24px' }}>
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 14,
-                    paddingBottom: 22,
-                    marginBottom: 24,
+                    gap: 12,
+                    paddingBottom: 14,
+                    marginBottom: 16,
                     borderBottom: `2px dashed ${C.accent}`,
                   }}
                 >
                   <div
                     style={{
-                      width: 48,
-                      height: 48,
+                      width: 40,
+                      height: 40,
                       borderRadius: '50%',
                       background: '#fff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 26,
+                      fontSize: 22,
                       boxShadow: '0 2px 8px rgba(184, 134, 60, 0.2)',
                     }}
                   >
-                    🌙
+                    ✿
                   </div>
                   <div>
                     <div
                       style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         letterSpacing: '0.4em',
                         color: C.accentDeep,
                         textTransform: 'uppercase',
                         fontWeight: 600,
                       }}
                     >
-                      Evening Note
+                      Daily Note
                     </div>
                     <h2
                       style={{
                         fontFamily: FONT_SERIF,
-                        fontSize: 22,
+                        fontSize: 19,
                         fontWeight: 700,
                         color: C.inkTitle,
-                        margin: '4px 0 0',
+                        margin: '2px 0 0',
                         letterSpacing: '0.08em',
                       }}
                     >
-                      晚 安 寄 语
+                      每 日 寄 语
                     </h2>
                   </div>
                 </div>
                 <div
                   style={{
                     color: C.inkBody,
-                    fontSize: 16,
-                    lineHeight: 2,
+                    fontSize: 15,
+                    lineHeight: 1.95,
                     letterSpacing: '0.03em',
                     fontFamily: FONT_SERIF,
                   }}
                 >
                   {conclusion!.split('\n').map((line, i) => {
                     const trimmed = line.trim();
-                    if (!trimmed) return <div key={i} style={{ height: 10 }} />;
+                    if (!trimmed) return <div key={i} style={{ height: 8 }} />;
                     return (
-                      <p key={i} style={{ margin: '0 0 12px' }}>
+                      <p key={i} style={{ margin: '0 0 10px' }}>
                         {renderInline(trimmed)}
                       </p>
                     );
@@ -649,24 +621,24 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
           )}
 
           {/* ----- 页脚 ----- */}
-          <footer style={{ textAlign: 'center', marginTop: 40 }}>
+          <footer style={{ textAlign: 'center', marginTop: 28 }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 10,
-                marginBottom: 12,
+                gap: 8,
+                marginBottom: 10,
               }}
             >
-              <span style={{ width: 40, height: 1, background: C.accentSoft }} />
-              <span style={{ color: C.accent, fontSize: 14 }}>✿</span>
-              <span style={{ width: 40, height: 1, background: C.accentSoft }} />
+              <span style={{ width: 36, height: 1, background: C.accentSoft }} />
+              <span style={{ color: C.accent, fontSize: 12 }}>✿</span>
+              <span style={{ width: 36, height: 1, background: C.accentSoft }} />
             </div>
             <p
               style={{
                 color: C.inkMuted,
-                fontSize: 12,
+                fontSize: 11,
                 letterSpacing: '0.3em',
                 margin: 0,
                 fontFamily: FONT_SERIF,
@@ -681,14 +653,9 @@ export const CritiqueShowcase: React.FC<CritiqueShowcaseProps> = ({
       {/* 响应式 */}
       <style>{`
         @media (max-width: 640px) {
-          .critique-card {
+          .critique-body {
             grid-template-columns: 1fr !important;
-          }
-          .critique-image-pad {
-            padding: 24px 20px 0 20px !important;
-          }
-          .critique-text {
-            padding: 24px 24px 28px !important;
+            gap: 16px !important;
           }
         }
       `}</style>
